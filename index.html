@@ -258,6 +258,17 @@
       netPreview.textContent = `Netto-Arbeitszeit: ${netHours.toFixed(2)} Std.`;
     }
 
+    function resetFormFields() {
+      const today = new Date();
+      dateInput.value = toDateStr(today);
+      startInput.value = "";
+      endInput.value = "";
+      breakInput.value = "0";
+      projectInput.value = "";
+      noteInput.value = "";
+      updateNetPreview();
+    }
+
     function tickTimer() {
       const startMs = Number(localStorage.getItem(STORAGE_KEYS.runningStart));
       if (!startMs) return;
@@ -359,8 +370,8 @@
         localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(items.slice(0, 50)));
         renderHistory();
 
-        noteInput.value = "";
-        setStatus("Gesendet! Prüfe dein Google Sheet.", "ok");
+        resetFormFields();
+        setStatus("Gesendet und Formular zurückgesetzt!", "ok");
       } catch (err) {
         setStatus("Fehler beim Senden: " + err.message, "err");
       } finally {
@@ -368,9 +379,7 @@
       }
     });
 
-    const now = new Date();
-    dateInput.value = toDateStr(now);
-    updateNetPreview();
+    resetFormFields();
     syncTimerUI();
     renderHistory();
   </script>
