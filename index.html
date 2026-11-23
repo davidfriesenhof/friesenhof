@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a73e8" />
+  <title>Arbeitszeiten</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --primary: #1a73e8;
+      --danger: #d93025;
+      --success: #1e8e3e;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      margin: 0 0 12px;
+    }
+
+    .timer-display {
+      font-size: 2.5rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      margin: 8px 0 14px;
+      letter-spacing: 1px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+
+    button:active { opacity: 0.85; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-start { background: var(--success); color: #fff; }
+    .btn-stop { background: var(--danger); color: #fff; }
+    .btn-primary { background: var(--primary); color: #fff; width: 100%; margin-top: 8px; }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .summary {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      min-height: 20px;
+    }
+
+    .status.ok { color: var(--success); }
+    .status.err { color: var(--danger); }
+
+    .history-item {
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .history-item:last-child { border-bottom: none; }
+    .small-muted { color: var(--muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Zeiterfassung</h1>
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <div class="btn-row">
+        <button class="btn-start" id="startBtn" type="button">Start</button>
+        <button class="btn-stop" id="stopBtn" type="button" disabled>Stopp</button>
+      </div>
+      <div class="summary" id="liveInfo">Bereit zum Starten.</div>
+    </div>
+
+    <form class="card" id="entryForm">
+      <div class="field">
+        <label for="dateInput">Datum</label>
+        <input type="date" id="dateInput" required />
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="startInput">Start</label>
+          <input type="time" id="startInput" required />
+        </div>
+        <div class="field">
+          <label for="endInput">Ende</label>
+          <input type="time" id="endInput" required />
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="breakInput">Pause (Minuten)</label>
+          <input type="number" id="breakInput" min="0" step="5" value="0" />
+        </div>
+        <div class="field">
+          <label for="projectInput">Projekt / Tätigkeit</label>
+          <select id="projectInput" required>
+            <option value="" disabled selected>Bitte wählen...</option>
+            <option value="Stall">Stall</option>
+            <option value="Wald">Wald</option>
+            <option value="Feldarbeit (Grünland/Acker)">Feldarbeit (Grünland/Acker)</option>
+            <option value="Hofwirtschaft">Hofwirtschaft</option>
+            <option value="Lohn">Lohn</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="noteInput">Notiz</label>
+        <textarea id="noteInput" rows="2" placeholder="Optional..."></textarea>
+      </div>
+
+      <div class="summary" id="netPreview">Netto-Arbeitszeit: 0.00 Std.</div>
+
+      <button class="btn-primary" id="saveBtn" type="submit">In Google Sheets speichern</button>
+      <div class="status" id="statusMsg"></div>
+    </form>
+
+    <div class="card">
+      <label>Zuletzt gesendet (lokaler Verlauf)</label>
+      <div id="historyList" class="small-muted">Noch keine Einträge gesendet.</div>
+    </div>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwjIDCpbTmdzqZLsEZxOIkkBXjix0WqeyljpE79_IeZFkOPmilQR9rBbDXzh1JYthqZTw/exec";
+
+    const STORAGE_KEYS = {
+      runningStart: "worktracker_running_start_v1",
+      history: "worktracker_history_v1"
+    };
+
+    const timerDisplay = document.getElementById("timerDisplay");
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const liveInfo = document.getElementById("liveInfo");
+
+    const entryForm = document.getElementById("entryForm");
+    const dateInput = document.getElementById("dateInput");
+    const startInput = document.getElementById("startInput");
+    const endInput = document.getElementById("endInput");
+    const breakInput = document.getElementById("breakInput");
+    const projectInput = document.getElementById("projectInput");
+    const noteInput = document.getElementById("noteInput");
+    const netPreview = document.getElementById("netPreview");
+    const saveBtn = document.getElementById("saveBtn");
+    const statusMsg = document.getElementById("statusMsg");
+    const historyList = document.getElementById("historyList");
+
+    let intervalId = null;
+
+    function pad(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function formatDuration(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function toDateStr(d) {
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function toTimeStr(d) {
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function updateNetPreview() {
+      if (!startInput.value || !endInput.value) {
+        netPreview.textContent = "Netto-Arbeitszeit: 0.00 Std.";
+        return;
+      }
+      const [sh, sm] = startInput.value.split(":").map(Number);
+      const [eh, em] = endInput.value.split(":").map(Number);
+      let startMins = sh * 60 + sm;
+      let endMins = eh * 60 + em;
+      if (endMins < startMins) endMins += 24 * 60;
+      const pause = Number(breakInput.value || 0);
+      const netHours = Math.max(0, (endMins - startMins - pause) / 60);
+      netPreview.textContent = `Netto-Arbeitszeit: ${netHours.toFixed(2)} Std.`;
+    }
+
+    function tickTimer() {
+      const startMs = Number(localStorage.getItem(STORAGE_KEYS.runningStart));
+      if (!startMs) return;
+      timerDisplay.textContent = formatDuration(Date.now() - startMs);
+    }
+
+    function syncTimerUI() {
+      const startMs = Number(localStorage.getItem(STORAGE_KEYS.runningStart));
+      clearInterval(intervalId);
+
+      if (startMs) {
+        const startDate = new Date(startMs);
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        liveInfo.textContent = `Läuft seit ${toTimeStr(startDate)} Uhr (${toDateStr(startDate)})`;
+        tickTimer();
+        intervalId = setInterval(tickTimer, 1000);
+      } else {
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+        timerDisplay.textContent = "00:00:00";
+        liveInfo.textContent = "Bereit zum Starten.";
+      }
+    }
+
+    startBtn.addEventListener("click", () => {
+      const now = Date.now();
+      localStorage.setItem(STORAGE_KEYS.runningStart, String(now));
+      const d = new Date(now);
+      dateInput.value = toDateStr(d);
+      startInput.value = toTimeStr(d);
+      updateNetPreview();
+      syncTimerUI();
+    });
+
+    stopBtn.addEventListener("click", () => {
+      const startMs = Number(localStorage.getItem(STORAGE_KEYS.runningStart));
+      localStorage.removeItem(STORAGE_KEYS.runningStart);
+      syncTimerUI();
+
+      const nowDate = new Date();
+      if (startMs) {
+        const startDate = new Date(startMs);
+        dateInput.value = toDateStr(startDate);
+        startInput.value = toTimeStr(startDate);
+      }
+      endInput.value = toTimeStr(nowDate);
+      updateNetPreview();
+    });
+
+    [startInput, endInput, breakInput].forEach((el) => {
+      el.addEventListener("input", updateNetPreview);
+    });
+
+    function setStatus(msg, type = "") {
+      statusMsg.textContent = msg;
+      statusMsg.className = `status ${type}`;
+    }
+
+    function renderHistory() {
+      const items = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || "[]");
+      if (!items.length) {
+        historyList.innerHTML = '<span class="small-muted">Noch keine Einträge gesendet.</span>';
+        return;
+      }
+      historyList.innerHTML = items.slice(0, 8).map((item) => `
+        <div class="history-item">
+          <strong>${item.date}</strong> · ${item.start}–${item.end} (Pause: ${item.breakMinutes}m)
+          ${item.project ? `<br><span class="small-muted">Projekt: ${item.project}</span>` : ""}
+        </div>
+      `).join("");
+    }
+
+    entryForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        date: dateInput.value,
+        start: startInput.value,
+        end: endInput.value,
+        breakMinutes: Number(breakInput.value || 0),
+        project: projectInput.value,
+        note: noteInput.value.trim()
+      };
+
+      saveBtn.disabled = true;
+      setStatus("Sende an Google Sheets...");
+
+      try {
+        await fetch(WEBHOOK_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        const items = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || "[]");
+        items.unshift(payload);
+        localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(items.slice(0, 50)));
+        renderHistory();
+
+        noteInput.value = "";
+        setStatus("Gesendet! Prüfe dein Google Sheet.", "ok");
+      } catch (err) {
+        setStatus("Fehler beim Senden: " + err.message, "err");
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    const now = new Date();
+    dateInput.value = toDateStr(now);
+    updateNetPreview();
+    syncTimerUI();
+    renderHistory();
+  </script>
+</body>
+</html>
